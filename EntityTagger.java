@@ -114,6 +114,8 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		if (mention != null) {
 			String subtype = "sub=" + mention.entity.subtype;
 			d.addF(subtype);
+			String entClassType = "eClassType=" + mention.entity.entClass;
+			d.addF(entClassType);
 		}
 
 	    d.setOutcome(type);
@@ -336,6 +338,8 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		if (mention != null) {
 			String subtype = "sub=" + mention.entity.subtype;
 			d.addF(subtype);
+			String entClassType = "eClassType=" + mention.entity.entClass;
+			d.addF(entClassType);
 		}
 	    String prediction = model.getBestOutcome(model.eval(d.toArray()));
 		//System.out.println(prediction);
