@@ -100,27 +100,87 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	Span span = Hub.getTEXTspan(doc);
 	int posn = span.start();
 	posn = doc.skipWhitespace(posn, span.end());
+	//int nextPos = span.start() + 1;
+
+
+	String prevToken = "";
+	String prevPOS = "";
+
 	while (posn < span.end()) {
 	    Annotation tokenAnnotation = doc.tokenAt(posn);
 
+		Annotation nextAnn = doc.tokenAt(span.end()+1);
 		if (tokenAnnotation == null)
 		return;
+		String [] splitTokenAnn = tokenAnnotation.toString().split("\\s+");
+
 	    String tokenText = doc.normalizedText(tokenAnnotation);
 	    Datum d = entityFeatures(tokenText);
         AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
-
+		String nextToken = "";
+//		if (nextAnn != null){
+//			nextToken = "nextToken=" + doc.normalizedText(nextAnn);
+//			d.addF(nextToken);
+//		}
 
 		if (mention != null) {
-			String subtype = "sub=" + mention.entity.subtype;
-			d.addF(subtype);
-			String entClassType = "eClassType=" + mention.entity.entClass;
-			d.addF(entClassType);
+			// experiment with trigram?? 1st and 2nd token need identifiers that differ from 3rd.
+
+			//String bigram = "bigram"+prevToken+tokenText;
+			//d.addF(bigram);
+			String prev = "prev=" + prevToken;
+			d.addF(prev);
+			String isCapped = "false";
+			int caps = 0;
+			for (int idx = 0; idx < tokenText.length(); idx++) {
+				if (idx == 0 && Character.isUpperCase(tokenText.charAt(idx))) {
+					isCapped = "true";
+				}
+				if (Character.isUpperCase(tokenText.charAt(idx))) {
+					caps++;
+				}
+			}
+			String capped = "isCap=" + isCapped;
+			d.addF(capped);
+			d.addF("caps=" + Integer.toString(caps));
+			String tokenLength = "length=" + Integer.toString(tokenText.length());
+			d.addF(tokenLength);
+
+			// get POS
+
+			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
+			d.addF(POStag);
+			//d.addF(prevPOS);
+
+			//analyze prevToken??
+
+
+
 		}
+
+		// tokenAnnotation.pos as a pos feature?
+//		if (mention != null) {
+//			String subtype = "sub=" + mention.entity.subtype;
+//			d.addF(subtype);
+//			String entClassType = "eClassType=" + mention.entity.entClass;
+//			d.addF(entClassType);
+//			String headText = "";
+//			String menType = "";
+//			for (int idx = 0; idx < mention.entity.mentions.size(); idx ++) {
+//				headText += mention.entity.mentions.get(idx).headText;
+//				menType += mention.entity.mentions.get(idx).type;
+//			}
+//			d.addF(headText);
+//			d.addF(menType);
+//		}
+
 
 	    d.setOutcome(type);
 	    eventWriter.println(d);
 	    posn = tokenAnnotation.end();
+		prevToken = tokenText;
+		prevPOS = splitTokenAnn[splitTokenAnn.length - 1];
 	}
     }
 
@@ -327,20 +387,63 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	Span span = Hub.getTEXTspan(doc);
 	int posn = span.start();
 	posn = doc.skipWhitespace(posn, span.end());
+
+	String prevToken = "";
 	while (posn < span.end()) {
 	    Annotation tokenAnnotation = doc.tokenAt(posn);
 	    if (tokenAnnotation == null)
 		return;
+		String [] splitTokenAnn = tokenAnnotation.toString().split("\\s+");
 	    String tokenText = doc.normalizedText(tokenAnnotation);
 	    Datum d = entityFeatures(tokenText);
 	    AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
+
+
 		if (mention != null) {
-			String subtype = "sub=" + mention.entity.subtype;
-			d.addF(subtype);
-			String entClassType = "eClassType=" + mention.entity.entClass;
-			d.addF(entClassType);
+			//String bigram = "bigram="+prevToken+tokenText;
+			//d.addF(bigram);
+			String prev = "prev=" + prevToken;
+			d.addF(prev);
+
+			String isCapped = "false";
+			int caps = 0;
+			for (int idx = 0; idx < tokenText.length(); idx++) {
+				if (idx == 0 && Character.isUpperCase(tokenText.charAt(idx))) {
+					isCapped = "true";
+				}
+				if (Character.isUpperCase(tokenText.charAt(idx))) {
+					caps++;
+				}
+			}
+			String capped = "isCap=" + isCapped;
+			d.addF(capped);
+			d.addF("caps=" + Integer.toString(caps));
+			String tokenLength = "length=" + Integer.toString(tokenText.length());
+			d.addF(tokenLength);
+
+			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
+			d.addF(POStag);
+
+
 		}
+//		if (mention != null) {
+//			String subtype = "sub=" + mention.entity.subtype;
+//			d.addF(subtype);
+//			String entClassType = "eClassType=" + mention.entity.entClass;
+//			d.addF(entClassType);
+//			String headText = "";
+//			String menType = "";
+//			for (int idx = 0; idx < mention.entity.mentions.size(); idx ++) {
+//				headText += mention.entity.mentions.get(idx).headText;
+//				menType += mention.entity.mentions.get(idx).type;
+//			}
+//			d.addF(headText);
+//			d.addF(menType);
+//		}
+
+		prevToken = tokenText;
+
 	    String prediction = model.getBestOutcome(model.eval(d.toArray()));
 		//System.out.println(prediction);
 //		if (!prediction.equals("other")){
