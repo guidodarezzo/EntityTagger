@@ -100,7 +100,6 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	Span span = Hub.getTEXTspan(doc);
 	int posn = span.start();
 	posn = doc.skipWhitespace(posn, span.end());
-	//int nextPos = span.start() + 1;
 
 
 	String prevToken = "";
@@ -109,20 +108,18 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	while (posn < span.end()) {
 	    Annotation tokenAnnotation = doc.tokenAt(posn);
 
-		Annotation nextAnn = doc.tokenAt(span.end()+1);
+		Annotation nextAnn = doc.tokenAt(tokenAnnotation.end());
 		if (tokenAnnotation == null)
 		return;
 		String [] splitTokenAnn = tokenAnnotation.toString().split("\\s+");
 
 	    String tokenText = doc.normalizedText(tokenAnnotation);
+
 	    Datum d = entityFeatures(tokenText);
         AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
 		String nextToken = "";
-//		if (nextAnn != null){
-//			nextToken = "nextToken=" + doc.normalizedText(nextAnn);
-//			d.addF(nextToken);
-//		}
+
 
 		if (mention != null) {
 			// experiment with trigram?? 1st and 2nd token need identifiers that differ from 3rd.
@@ -131,6 +128,22 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			//d.addF(bigram);
 			String prev = "prev=" + prevToken;
 			d.addF(prev);
+			String isprevCap = "false";
+			int prevCaps = 0;
+
+			for (int idx = 0; idx < prev.length(); idx++) {
+				if (idx == 0 && Character.isUpperCase(prev.charAt(idx))) {
+					isprevCap = "true";
+				}
+				if (Character.isUpperCase(prev.charAt(idx))) {
+					prevCaps++;
+				}
+			}
+
+			d.addF("prevCap=" + isprevCap);
+			d.addF("prevCapNum=" + Integer.toString(prevCaps));
+
+
 			String isCapped = "false";
 			int caps = 0;
 			for (int idx = 0; idx < tokenText.length(); idx++) {
@@ -151,11 +164,34 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 
 			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
 			d.addF(POStag);
-			//d.addF(prevPOS);
+			d.addF("prev"+prevPOS);
 
 			//analyze prevToken??
 
+			// next token!
 
+			if (nextAnn != null){
+				nextToken = "nextToken=" + doc.normalizedText(nextAnn);
+				d.addF(nextToken);
+				String[] splitNext = nextAnn.toString().split("\\s+");
+				String nextPOS = "next" + splitNext[splitNext.length - 1];
+				d.addF(nextPOS);
+
+				String nextIsCap = "false";
+				int nextCaps = 0;
+				for (int idx = 0; idx < nextToken.length(); idx++) {
+					if (idx == 0 && Character.isUpperCase(nextToken.charAt(idx))) {
+						nextIsCap = "true";
+					}
+
+					if (Character.isUpperCase(nextToken.charAt(idx))) {
+						nextCaps++;
+					}
+				}
+
+				d.addF(nextIsCap);
+				d.addF("nextCaps="+Integer.toString(nextCaps));
+			}
 
 		}
 
@@ -389,15 +425,23 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	posn = doc.skipWhitespace(posn, span.end());
 
 	String prevToken = "";
+	String prevPOS = "";
+
 	while (posn < span.end()) {
 	    Annotation tokenAnnotation = doc.tokenAt(posn);
-	    if (tokenAnnotation == null)
+		Annotation nextAnn = doc.tokenAt(tokenAnnotation.end());
+
+
+		if (tokenAnnotation == null)
 		return;
+
 		String [] splitTokenAnn = tokenAnnotation.toString().split("\\s+");
 	    String tokenText = doc.normalizedText(tokenAnnotation);
+
 	    Datum d = entityFeatures(tokenText);
 	    AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
+		String nextToken = "";
 
 
 		if (mention != null) {
@@ -405,6 +449,21 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			//d.addF(bigram);
 			String prev = "prev=" + prevToken;
 			d.addF(prev);
+
+			String isprevCap = "false";
+			int prevCaps = 0;
+
+			for (int idx = 0; idx < prev.length(); idx++) {
+				if (idx == 0 && Character.isUpperCase(prev.charAt(idx))) {
+					isprevCap = "true";
+				}
+				if (Character.isUpperCase(prev.charAt(idx))) {
+					prevCaps++;
+				}
+			}
+
+			d.addF("prevCap=" + isprevCap);
+			d.addF("prevCapNum=" + Integer.toString(prevCaps));
 
 			String isCapped = "false";
 			int caps = 0;
@@ -425,6 +484,30 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
 			d.addF(POStag);
 
+			d.addF("prev"+prevPOS);
+
+			if (nextAnn != null){
+				nextToken = "nextToken=" + doc.normalizedText(nextAnn);
+				d.addF(nextToken);
+				String[] splitNext = nextAnn.toString().split("\\s+");
+				String nextPOS = "next" + splitNext[splitNext.length - 1];
+				d.addF(nextPOS);
+
+				String nextIsCap = "false";
+				int nextCaps = 0;
+				for (int idx = 0; idx < nextToken.length(); idx++) {
+					if (idx == 0 && Character.isUpperCase(nextToken.charAt(idx))) {
+						nextIsCap = "true";
+					}
+
+					if (Character.isUpperCase(nextToken.charAt(idx))) {
+						nextCaps++;
+					}
+				}
+
+				d.addF(nextIsCap);
+				d.addF("nextCaps="+Integer.toString(nextCaps));
+			}
 
 		}
 //		if (mention != null) {
@@ -443,6 +526,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 //		}
 
 		prevToken = tokenText;
+		prevPOS = splitTokenAnn[splitTokenAnn.length - 1];
 
 	    String prediction = model.getBestOutcome(model.eval(d.toArray()));
 		//System.out.println(prediction);
