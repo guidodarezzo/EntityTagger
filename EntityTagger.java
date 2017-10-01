@@ -7,13 +7,15 @@
 
 //package edu.nyu.jetlite;
 
+import edu.nyu.jet.aceJet.AceDocument;
+import edu.nyu.jet.aceJet.AceEntity;
+import edu.nyu.jet.aceJet.AceEntityMention;
+import edu.nyu.jet.aceJet.Datum;
 import edu.nyu.jetlite.tipster.*;
+import opennlp.maxent.GISModel;
+
 import java.io.*;
 import java.util.*;
-import edu.nyu.jet.aceJet.*;
-import opennlp.maxent.*;
-import opennlp.maxent.io.*;
-import opennlp.model.*;
 
 /**
  *  Assigns semantic type information to entities.
@@ -118,7 +120,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	    Datum d = entityFeatures(tokenText);
         AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
-		String nextToken = "";
+		String nextToken = "nexttoken=";
 
 
 		if (mention != null) {
@@ -126,8 +128,17 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 
 			//String bigram = "bigram"+prevToken+tokenText;
 			//d.addF(bigram);
+
+			String trigram = "trigram=";
+			trigram += prevToken + tokenText;
+
+			/*
+			* The next block of code handles features derived from the previous token
+			*
+			* */
+
 			String prev = "prev=" + prevToken;
-			d.addF(prev);
+			//d.addF(prev);
 			String isprevCap = "false";
 			int prevCaps = 0;
 
@@ -139,9 +150,15 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 					prevCaps++;
 				}
 			}
+			d.addF("prevPOS="+prevPOS);
 
-			d.addF("prevCap=" + isprevCap);
-			d.addF("prevCapNum=" + Integer.toString(prevCaps));
+			//d.addF("prevCap=" + isprevCap);
+			//d.addF("prevCapNum=" + Integer.toString(prevCaps));
+
+			/*
+			* The next block of code handles features derived from the CURRENT token
+			*
+			* */
 
 
 			String isCapped = "false";
@@ -160,19 +177,18 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			String tokenLength = "length=" + Integer.toString(tokenText.length());
 			d.addF(tokenLength);
 
-			// get POS
 
 			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
 			d.addF(POStag);
-			d.addF("prev"+prevPOS);
 
-			//analyze prevToken??
 
-			// next token!
+			/*
+			* The next block of code handles features related to the NEXT token
+			*
+			* */
 
 			if (nextAnn != null){
-				nextToken = "nextToken=" + doc.normalizedText(nextAnn);
-				d.addF(nextToken);
+				nextToken += doc.normalizedText(nextAnn);
 				String[] splitNext = nextAnn.toString().split("\\s+");
 				String nextPOS = "next" + splitNext[splitNext.length - 1];
 				d.addF(nextPOS);
@@ -189,10 +205,18 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 					}
 				}
 
-				d.addF(nextIsCap);
-				d.addF("nextCaps="+Integer.toString(nextCaps));
+				//d.addF("nextisCap="+nextIsCap);
+				//d.addF("nextCaps="+Integer.toString(nextCaps));
+
+				trigram += nextToken;
+
 			}
 
+			//d.addF(nextToken);
+
+
+
+			d.addF(trigram);
 		}
 
 		// tokenAnnotation.pos as a pos feature?
@@ -341,11 +365,14 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	System.out.println ("correct: " + correctEntities + "   response: " + responseEntities
 		+ "   key: " + keyEntities);
 	System.out.println ("precision: " + precision + "   recall: " + recall);
+	System.out.println("f1: " + (2 * (recall * precision)/(recall + precision)));
+
 	System.out.println();
 		float orgRecall = 100.0f * orgPred.get(0) / orgPred.get(2);
 		float orgPrec = 100.0f * orgPred.get(0) / orgPred.get(1);
 		System.out.println("org correct: " + orgPred.get(0) + " org response: " + orgPred.get(1) + " org key: " + orgPred.get(2));
 		System.out.println("org precision: " + orgPrec + " recall: " + orgRecall);
+		System.out.println("f1: " + (2 * (orgRecall * orgPrec)/(orgRecall + orgPrec)));
 
 		// calculate person stats
 
@@ -354,6 +381,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float perPrec = 100.0f * perPred.get(0) / perPred.get(1);
 		System.out.println("person correct: " + perPred.get(0) + " person response: " + perPred.get(1) + " person key: " + perPred.get(2));
 		System.out.println("person precision: " + perPrec + " recall: " + perRecall);
+		System.out.println("f1: " + (2 *(perRecall * perPrec)/(perRecall + perPrec)));
 
 		// calculate facility stats
 
@@ -362,6 +390,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float facPrec = 100.0f * facPred.get(0) / facPred.get(1);
 		System.out.println("facility correct: " + facPred.get(0) + " response: " + facPred.get(1) + " key: " + facPred.get(2));
 		System.out.println("facility precision: " + facPrec + " recall: " + facRecall);
+		System.out.println("f1: " + (2 * (facRecall * facPrec)/(facRecall + facPrec)));
 
 		// calculate GPE stats
 
@@ -370,6 +399,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float gpePrec = 100.0f * gpePred.get(0) / gpePred.get(1);
 		System.out.println("GPE correct: " + gpePred.get(0) + " response: " + gpePred.get(1) + " key: " + gpePred.get(2));
 		System.out.println("GPE precision: " + gpePrec + " recall: " + gpeRecall);
+		System.out.println("f1: " + (2 * (gpeRecall * gpePrec)/(gpeRecall + gpePrec)));
 
 		// calculate WEA stats
 
@@ -378,6 +408,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float weaPrec = 100.0f * weaPred.get(0) / weaPred.get(1);
 		System.out.println("Wea correct: " + weaPred.get(0) + " response: " + weaPred.get(1) + " key: " + weaPred.get(2));
 		System.out.println("Wea precision: " + weaPrec + " recall: " + weaRecall);
+		System.out.println("f1: " + (2 * (weaRecall * weaPrec)/(weaRecall + weaPrec)));
 
 		// calculate LOCATION stats
 
@@ -386,6 +417,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float locPrec = 100.0f * locPred.get(0) / locPred.get(1);
 		System.out.println("Location correct: " + locPred.get(0) + " response: " + locPred.get(1) + " key: " + locPred.get(2));
 		System.out.println("Location precision: " + locPrec + " recall: " + locRecall);
+		System.out.println("f1: " + (2 * (locRecall * locPrec)/(locRecall + locPrec)));
 
 		// calculate VEH stats
 
@@ -394,6 +426,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float vehPrec = 100.0f * vehPred.get(0) / vehPred.get(1);
 		System.out.println("VEH correct: " + vehPred.get(0) + " response: " + vehPred.get(1) + " key: " + vehPred.get(2));
 		System.out.println("VEH precision: " + vehPrec + " recall: " + vehRecall);
+		System.out.println("f1: " + (2 * (vehRecall * vehPrec)/(vehRecall + vehPrec)));
 
 		// calculate OTHER stats
 
@@ -402,6 +435,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		float othPrec = 100.0f * otherPred.get(0) / otherPred.get(1);
 		System.out.println("Other correct: " + otherPred.get(0) + " response: " + otherPred.get(1) + " key: " + otherPred.get(2));
 		System.out.println("Other precision: " + othPrec + " recall: " + othRecall);
+		System.out.println("f1: " + (2 * (othRecall * othPrec)/(othRecall + othPrec)));
 
     }
 
@@ -441,14 +475,23 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	    Datum d = entityFeatures(tokenText);
 	    AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
-		String nextToken = "";
+		String nextToken = "nexttoken=";
 
 
 		if (mention != null) {
 			//String bigram = "bigram="+prevToken+tokenText;
 			//d.addF(bigram);
+
+			String trigram = "trigram=";
+			trigram += prevToken + tokenText;
+
+
+			/*
+			* Handle features derived from previous token
+			* */
+
 			String prev = "prev=" + prevToken;
-			d.addF(prev);
+			//d.addF(prev);
 
 			String isprevCap = "false";
 			int prevCaps = 0;
@@ -462,8 +505,13 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 				}
 			}
 
-			d.addF("prevCap=" + isprevCap);
-			d.addF("prevCapNum=" + Integer.toString(prevCaps));
+			//d.addF("prevCap=" + isprevCap);
+			//d.addF("prevCapNum=" + Integer.toString(prevCaps));
+			d.addF("prevPOS="+prevPOS);
+
+			/*
+			* Handle CURRENT token features
+			* */
 
 			String isCapped = "false";
 			int caps = 0;
@@ -484,11 +532,15 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			String POStag = splitTokenAnn[splitTokenAnn.length - 1];
 			d.addF(POStag);
 
-			d.addF("prev"+prevPOS);
+			/*
+			* Handle features which are derived from the next token
+			*
+			* */
+
 
 			if (nextAnn != null){
-				nextToken = "nextToken=" + doc.normalizedText(nextAnn);
-				d.addF(nextToken);
+				nextToken += doc.normalizedText(nextAnn);
+
 				String[] splitNext = nextAnn.toString().split("\\s+");
 				String nextPOS = "next" + splitNext[splitNext.length - 1];
 				d.addF(nextPOS);
@@ -505,9 +557,15 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 					}
 				}
 
-				d.addF(nextIsCap);
-				d.addF("nextCaps="+Integer.toString(nextCaps));
+				//d.addF("nextisCap="+nextIsCap);
+				//d.addF("nextCaps="+Integer.toString(nextCaps));
+
+				trigram += nextToken;
 			}
+
+			//d.addF(nextToken);
+
+			d.addF(trigram);
 
 		}
 //		if (mention != null) {
