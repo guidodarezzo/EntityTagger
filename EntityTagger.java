@@ -59,8 +59,27 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	Properties p = new Properties();
 	p.setProperty("EntityTagger.model.fileName", mfn);
 	EntityTagger etagger = new EntityTagger(p);
+
+
+
+
 	etagger.trainTagger(docDir, trainDocListFileName);
+
+
 	etagger.evaluate(docDir, testDocListFileName);
+	// need to delete etagger here to free up for new entitytagger...
+		// etagger = null;
+
+		// String labelMod = args[4];
+		// Properties q = new Properties();
+		// q.setProperty("EntityTagger.model.fileName", labelMod);
+		// EntityTagger stage2Tagger = new EntityTagger(q);
+
+
+		// write events from Binary to new "events" file
+		// 	MaxEnt.buildModel(labelMod);
+
+		// now take the output from the test tagger above and pass it through model.
     }
 
     /**
@@ -78,10 +97,17 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	while ((line = docListReader.readLine()) != null) {
 	    learnFromDocument (docDir + "/" + line.trim(), eventWriter);
             docCount++;
-            if (docCount % 5 == 0) System.out.print(".");
+            if (docCount % 5 == 0) System.out.print("*");
+
         }
         eventWriter.close();
+		// buildModel reads in "events" so
 	MaxEnt.buildModel(modelFileName);
+		// delete "events
+		// transfer contents of binary classifier into new "events"
+		// MaxEnt.buildModel(modelFileName)
+
+
     }
 
     void learnFromDocument (String docFileName, PrintWriter eventWriter) throws IOException {
@@ -120,6 +146,8 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	    Datum d = entityFeatures(tokenText);
         AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
+
+
 		String nextToken = "nexttoken=";
 
 
@@ -129,8 +157,8 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			//String bigram = "bigram"+prevToken+tokenText;
 			//d.addF(bigram);
 
-			String trigram = "trigram=";
-			trigram += prevToken + tokenText;
+//			String trigram = "trigram=";
+//			trigram += prevToken + tokenText;
 
 			/*
 			* The next block of code handles features derived from the previous token
@@ -138,7 +166,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			* */
 
 			String prev = "prev=" + prevToken;
-			//d.addF(prev);
+			d.addF(prev);
 			String isprevCap = "false";
 			int prevCaps = 0;
 
@@ -154,6 +182,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 
 			//d.addF("prevCap=" + isprevCap);
 			//d.addF("prevCapNum=" + Integer.toString(prevCaps));
+			d.addF("prevCaps=" + isprevCap + Integer.toString(prevCaps));
 
 			/*
 			* The next block of code handles features derived from the CURRENT token
@@ -191,7 +220,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 				nextToken += doc.normalizedText(nextAnn);
 				String[] splitNext = nextAnn.toString().split("\\s+");
 				String nextPOS = "next" + splitNext[splitNext.length - 1];
-				d.addF(nextPOS);
+				//d.addF(nextPOS);
 
 				String nextIsCap = "false";
 				int nextCaps = 0;
@@ -207,16 +236,18 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 
 				//d.addF("nextisCap="+nextIsCap);
 				//d.addF("nextCaps="+Integer.toString(nextCaps));
+				//d.addF("nextCaps=" + nextIsCap + Integer.toString(nextCaps));
 
-				trigram += nextToken;
+
+				//trigram += nextToken;
 
 			}
 
-			//d.addF(nextToken);
+			d.addF(nextToken);
 
 
 
-			d.addF(trigram);
+			//d.addF(trigram);
 		}
 
 		// tokenAnnotation.pos as a pos feature?
@@ -296,7 +327,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
     static int responseEntities;
     static int keyEntities;
 
-	// stats for ORGANIZATION predictions
+	// stats for separate label predictions
 
 	static ArrayList<Integer> orgPred = new ArrayList<Integer>();
 	static ArrayList<Integer> perPred = new ArrayList<Integer>();
@@ -307,20 +338,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	static ArrayList<Integer> vehPred = new ArrayList<Integer>();
 	static ArrayList<Integer> otherPred = new ArrayList<Integer>();
 
-
-	/**
-     *  Evaluate the performance of the entity tagger.
-     *
-     *  @param  /docdir               the directory containing the test documents
-     *  @param  testDocListFileName  the file containing a list of the test documents, one per line
-     */
-
-    void evaluate (String docDir, String testDocListFileName) throws IOException {
-	correctEntities = 0;
-	responseEntities = 0;
-	keyEntities = 0;
-
-		// index 0 = correct; index 1 = response; index 2 = key
+	void initializeLabels() {
 
 		orgPred.add(0,0);
 		orgPred.add(1,0);
@@ -354,12 +372,33 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 		otherPred.add(1,0);
 		otherPred.add(2,0);
 
+	}
+
+
+	/**
+     *  Evaluate the performance of the entity tagger.
+     *
+     *  @param  /docdir               the directory containing the test documents
+     *  @param  testDocListFileName  the file containing a list of the test documents, one per line
+     */
+
+    void evaluate (String docDir, String testDocListFileName) throws IOException {
+	correctEntities = 0;
+	responseEntities = 0;
+	keyEntities = 0;
+
+		// index 0 = correct; index 1 = response; index 2 = key
+
+	initializeLabels();
+
 
 	model = MaxEnt.loadModel(modelFileName, "EntityTagger");
+
 	BufferedReader docListReader = new BufferedReader (new FileReader (testDocListFileName));
 	String line; 
 	while ((line = docListReader.readLine()) != null)
 	    evaluateOnDocument (docDir + "/" + line.trim());
+
 	float recall = 100.0f * correctEntities / keyEntities;
 	float precision = 100.0f * correctEntities / responseEntities;
 	System.out.println ("correct: " + correctEntities + "   response: " + responseEntities
@@ -475,6 +514,7 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 	    Datum d = entityFeatures(tokenText);
 	    AceEntityMention mention = mentionMap.get(posn);
 	    String type = (mention == null) ? "other" : mention.entity.type;
+
 		String nextToken = "nexttoken=";
 
 
@@ -482,8 +522,8 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			//String bigram = "bigram="+prevToken+tokenText;
 			//d.addF(bigram);
 
-			String trigram = "trigram=";
-			trigram += prevToken + tokenText;
+//			String trigram = "trigram=";
+//			trigram += prevToken + tokenText;
 
 
 			/*
@@ -491,23 +531,24 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			* */
 
 			String prev = "prev=" + prevToken;
-			//d.addF(prev);
+			d.addF(prev);
 
-			String isprevCap = "false";
-			int prevCaps = 0;
-
-			for (int idx = 0; idx < prev.length(); idx++) {
-				if (idx == 0 && Character.isUpperCase(prev.charAt(idx))) {
-					isprevCap = "true";
-				}
-				if (Character.isUpperCase(prev.charAt(idx))) {
-					prevCaps++;
-				}
-			}
+//			String isprevCap = "false";
+//			int prevCaps = 0;
+//
+//			for (int idx = 0; idx < prev.length(); idx++) {
+//				if (idx == 0 && Character.isUpperCase(prev.charAt(idx))) {
+//					isprevCap = "true";
+//				}
+//				if (Character.isUpperCase(prev.charAt(idx))) {
+//					prevCaps++;
+//				}
+//			}
 
 			//d.addF("prevCap=" + isprevCap);
 			//d.addF("prevCapNum=" + Integer.toString(prevCaps));
 			d.addF("prevPOS="+prevPOS);
+			//d.addF("prevCaps=" + isprevCap + Integer.toString(prevCaps));
 
 			/*
 			* Handle CURRENT token features
@@ -541,31 +582,32 @@ public class EntityTagger extends edu.nyu.jetlite.tipster.Annotator {
 			if (nextAnn != null){
 				nextToken += doc.normalizedText(nextAnn);
 
-				String[] splitNext = nextAnn.toString().split("\\s+");
-				String nextPOS = "next" + splitNext[splitNext.length - 1];
-				d.addF(nextPOS);
+//				String[] splitNext = nextAnn.toString().split("\\s+");
+//				String nextPOS = "next" + splitNext[splitNext.length - 1];
+//				d.addF(nextPOS);
 
-				String nextIsCap = "false";
-				int nextCaps = 0;
-				for (int idx = 0; idx < nextToken.length(); idx++) {
-					if (idx == 0 && Character.isUpperCase(nextToken.charAt(idx))) {
-						nextIsCap = "true";
-					}
-
-					if (Character.isUpperCase(nextToken.charAt(idx))) {
-						nextCaps++;
-					}
-				}
+//				String nextIsCap = "false";
+//				int nextCaps = 0;
+//				for (int idx = 0; idx < nextToken.length(); idx++) {
+//					if (idx == 0 && Character.isUpperCase(nextToken.charAt(idx))) {
+//						nextIsCap = "true";
+//					}
+//
+//					if (Character.isUpperCase(nextToken.charAt(idx))) {
+//						nextCaps++;
+//					}
+//				}
 
 				//d.addF("nextisCap="+nextIsCap);
 				//d.addF("nextCaps="+Integer.toString(nextCaps));
 
-				trigram += nextToken;
+				//trigram += nextToken;
+				//d.addF("nextCaps=" + nextIsCap + Integer.toString(nextCaps));
 			}
 
-			//d.addF(nextToken);
+			d.addF(nextToken);
 
-			d.addF(trigram);
+			//d.addF(trigram);
 
 		}
 //		if (mention != null) {
